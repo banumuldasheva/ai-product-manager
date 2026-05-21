@@ -1,0 +1,30 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0f1117;
+  color: #e2e8f0;
+  font-family: system-ui, sans-serif;
+  padding: 2rem;
+  line-height: 1.6;
+}
+
+main {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+h1 { font-size: 1.5rem; margin-bottom: 2rem; color: #fff; }
+
+section {
+  background: #1a1d2e;
+  border: 1px solid #2d3148;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+h2 { font-size: 0.85rem; color: #7c85a0; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+.muted { color: #4a5568; }
+.error { color: #fc8181; }
+strong { color: #90cdf4; }
