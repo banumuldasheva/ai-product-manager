@@ -1,7 +1,10 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
+import { Op } from "sequelize";
 import { sequelize, dbKind } from "./db.js";
+import { Habit, HabitLog } from "./models.js";
+import { seedHabits } from "./seed.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -18,8 +21,30 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-app.get("/api/hello", (req, res) => {
-  res.json({ message: "Hello from the backend 👋" });
+app.get("/api/habits", async (req, res) => {
+  const habits = await Habit.findAll({ order: [["category", "ASC"]] });
+  res.json(habits);
+});
+
+app.get("/api/logs", async (req, res) => {
+  const { month } = req.query; // YYYY-MM
+  const logs = await HabitLog.findAll({
+    where: { date: { [Op.like]: `${month}-%` } },
+    include: Habit,
+  });
+  res.json(logs);
+});
+
+app.post("/api/logs", async (req, res) => {
+  const { habitId, date, done } = req.body;
+  const existing = await HabitLog.findOne({ where: { habitId, date } });
+  if (existing) {
+    await existing.update({ done });
+    res.json(existing);
+  } else {
+    const log = await HabitLog.create({ habitId, date, done });
+    res.json(log);
+  }
 });
 
 if (process.env.NODE_ENV === "production") {
@@ -29,7 +54,9 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`db: ${dbKind}`);
-  console.log(`server running on port ${PORT}`);
+sequelize.sync().then(() => seedHabits(Habit)).then(() => {
+  app.listen(PORT, () => {
+    console.log(`db: ${dbKind}`);
+    console.log(`server running on port ${PORT}`);
+  });
 });
