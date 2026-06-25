@@ -5,10 +5,9 @@ databases:
 services:
   - type: web
     name: ai-chat-app
-    runtime: node
+    runtime: docker
     plan: free
-    buildCommand: npm --prefix server install && npm --prefix client install && npm --prefix client run build
-    startCommand: npm --prefix server start
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: GEMINI_API_KEY
         sync: false
