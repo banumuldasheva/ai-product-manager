@@ -7,6 +7,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText, convertToModelMessages, tool, stepCountIs } from 'ai';
 import { z } from 'zod';
 import * as db from './db.js';
+import { createTelegramBot } from './telegram.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +23,9 @@ if (!apiKey) {
 
 const google = createGoogleGenerativeAI({ apiKey });
 const MODEL = 'gemini-2.5-flash';
+const SYSTEM =
+  'You are a helpful assistant. When the user asks for arithmetic, ' +
+  'use the calculator tool instead of computing it yourself.';
 
 // ---- Calculator tool (test tool for the agent) ----
 function safeEval(expression) {
@@ -100,9 +104,7 @@ app.post('/api/chat', async (req, res) => {
 
   const result = streamText({
     model: google(MODEL),
-    system:
-      'You are a helpful assistant. When the user asks for arithmetic, ' +
-      'use the calculator tool instead of computing it yourself.',
+    system: SYSTEM,
     messages: convertToModelMessages(messages),
     tools: { calculator },
     stopWhen: stepCountIs(5),
@@ -119,6 +121,41 @@ app.post('/api/chat', async (req, res) => {
     },
   });
 });
+
+// ---- Telegram bot ----
+// Local dev: poll with the test bot. Production: webhook with the prod bot.
+const isProd = process.env.NODE_ENV === 'production';
+const tgToken = isProd ? process.env.TG_PROD : process.env.TG_TEST;
+
+if (tgToken) {
+  const bot = createTelegramBot({
+    token: tgToken,
+    model: google(MODEL),
+    tools: { calculator },
+    system: SYSTEM,
+  });
+
+  if (isProd) {
+    // Telegram POSTs updates here; verify the secret token and ack fast.
+    app.post('/api/telegram/webhook', (req, res) => {
+      if (req.get('x-telegram-bot-api-secret-token') !== bot.webhookSecret) {
+        return res.sendStatus(401);
+      }
+      res.sendStatus(200); // ack immediately, then process
+      bot.handleUpdate(req.body).catch((err) => console.error('[tg] handle error:', err));
+    });
+
+    const publicUrl =
+      process.env.PUBLIC_URL ||
+      process.env.RENDER_EXTERNAL_URL ||
+      'https://ai-chat-app-07rg.onrender.com';
+    bot.registerWebhook(publicUrl).catch((err) => console.error('[tg] setWebhook error:', err));
+  } else {
+    bot.startPolling().catch((err) => console.error('[tg] polling error:', err));
+  }
+} else {
+  console.log(`[tg] no ${isProd ? 'TG_PROD' : 'TG_TEST'} token set — Telegram bot disabled`);
+}
 
 // Serve the built client in production (single Render web service)
 if (process.env.NODE_ENV === 'production') {

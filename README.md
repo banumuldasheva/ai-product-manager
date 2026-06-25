@@ -6,6 +6,7 @@ Simple streaming chat app built with the **Vercel AI SDK** and **Gemini**.
 - **Frontend:** React + Vite (`@ai-sdk/react` `useChat`)
 - **Persistence:** SQLite locally, Postgres in production (auto-detected via `DATABASE_URL`)
 - **Agent tool:** a `calculator` tool the model calls for arithmetic
+- **Telegram:** same agent over a Telegram bot — polling locally, webhook in prod
 - **Features:** multiple chats (sidebar), streaming responses, **Clear chat** button
 
 ## Project structure
@@ -40,6 +41,31 @@ Simple streaming chat app built with the **Vercel AI SDK** and **Gemini**.
 
 Locally, chats are stored in `server/chat.sqlite`. The Vite dev server proxies
 `/api/*` to the Express server.
+
+## Telegram bot
+
+The same Gemini agent (with the calculator tool) is reachable over Telegram.
+Conversations are stored with the shared db layer under separate chat ids
+(`tg:<telegramChatId>`), so they never mix with web chats. They appear in the
+web sidebar titled `TG: <name>`.
+
+Two bots are used:
+
+- **Local** → polls with `TG_TEST` (long polling, no public URL needed)
+- **Production** → webhook with `TG_PROD`, registered to
+  `${RENDER_EXTERNAL_URL}/api/telegram/webhook` on startup
+
+Env vars (in `.env` locally, in the Render dashboard for prod):
+
+```
+TG_TEST=...   # test bot token (local polling)
+TG_PROD=...   # prod bot token (webhook)
+```
+
+Bot commands: `/start` (intro), `/clear` (reset that chat's history).
+
+The webhook endpoint verifies Telegram's `X-Telegram-Bot-Api-Secret-Token`
+header (a value derived from the bot token), so only Telegram can post updates.
 
 ## Deploy to Render
 
