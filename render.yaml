@@ -1,22 +1,20 @@
 databases:
-  - name: ai-workshop-db
+  - name: ai-chat-db
     plan: free
-    databaseName: app
-    user: app
 
 services:
   - type: web
-    name: ai-workshop-web
-    runtime: docker
+    name: ai-chat-app
+    runtime: node
     plan: free
-    dockerfilePath: ./Dockerfile
-    healthCheckPath: /api/health
+    buildCommand: npm --prefix server install && npm --prefix client install && npm --prefix client run build
+    startCommand: npm --prefix server start
     envVars:
+      - key: GEMINI_API_KEY
+        sync: false
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3001
       - key: DATABASE_URL
         fromDatabase:
-          name: ai-workshop-db
+          name: ai-chat-db
           property: connectionString

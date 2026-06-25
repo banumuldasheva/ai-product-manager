@@ -1,68 +1,62 @@
-# Full-Stack Template
+# AI Chat App
 
-A minimal full-stack starter using React (Vite) on the frontend and Node.js + Express on the backend, with Sequelize ORM for database access. It runs on SQLite locally — no database to install — and deploys for free on Render, where it automatically switches to Postgres.
+Simple streaming chat app built with the **Vercel AI SDK** and **Gemini**.
 
-## Stack
-
-- **Frontend:** React 18 + Vite 5 (JavaScript)
-- **Backend:** Node.js + Express, ES modules
-- **Database:** Sequelize ORM — SQLite locally, PostgreSQL on Render (same `DATABASE_URL` env var drives both)
-- **Deploy:** Render free tier (free web service + free Postgres), provisioned via `render.yaml`
+- **Backend:** Node.js + Express, Vercel AI SDK (`ai`, `@ai-sdk/google`)
+- **Frontend:** React + Vite (`@ai-sdk/react` `useChat`)
+- **Persistence:** SQLite locally, Postgres in production (auto-detected via `DATABASE_URL`)
+- **Agent tool:** a `calculator` tool the model calls for arithmetic
+- **Features:** multiple chats (sidebar), streaming responses, **Clear chat** button
 
 ## Project structure
 
 ```
 .
-├── backend/
-│   ├── package.json
-│   ├── server.js
-│   └── db.js
-├── frontend/
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── index.html
-│   └── src/
-│       ├── main.jsx
-│       ├── App.jsx
-│       └── styles.css
-├── Dockerfile
-├── render.yaml
-├── .env.example
-└── .gitignore
+├── server/        Express API + AI SDK + DB layer
+│   ├── index.js   routes + streamText + calculator tool
+│   ├── db.js      SQLite / Postgres storage
+│   └── load-env.js
+├── client/        React + Vite UI
+│   └── src/App.jsx
+├── render.yaml    Render deploy (web service + Postgres)
+└── .env           GEMINI_API_KEY, PORT, optional DATABASE_URL
 ```
 
-## Local development
+## Run locally
 
-No database to install — SQLite is built in and created automatically on first run.
+1. Set your key in `.env`:
+   ```
+   GEMINI_API_KEY=your_key_here
+   ```
+2. Install everything:
+   ```
+   npm install && npm run install:all
+   ```
+3. Start both server (`:3001`) and client (`:5173`):
+   ```
+   npm run dev
+   ```
+4. Open http://localhost:5173
 
-**Terminal 1 — backend:**
-```bash
-cd backend
-npm install
-npm run dev
-```
-
-**Terminal 2 — frontend:**
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173). The frontend proxies `/api` requests to the backend on port 3001.
+Locally, chats are stored in `server/chat.sqlite`. The Vite dev server proxies
+`/api/*` to the Express server.
 
 ## Deploy to Render
 
-1. Push this repo to GitHub.
-2. Go to [render.com](https://render.com) → **New → Blueprint** → connect your repo.
-3. Render reads `render.yaml` and provisions a free Postgres database and a free web service. `DATABASE_URL` is wired automatically — no copy-pasting connection strings.
+`render.yaml` is a blueprint that provisions:
+- a **web service** — builds the client and runs the Express server (which also
+  serves the built client in production)
+- a free **Postgres** database — wired in as `DATABASE_URL`, so storage switches
+  from SQLite to Postgres automatically
 
-**Note:** Free web services sleep after inactivity (~30s cold start on first request). Free Postgres databases expire after 30 days and must be recreated.
+Set `GEMINI_API_KEY` in the Render dashboard (it is marked `sync: false`).
 
-## Endpoints
+## API
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/hello` | Returns `{ message: "Hello from the backend 👋" }` |
-| GET | `/api/health` | Returns `{ status: "ok", db: "sqlite" \| "postgres" }` |
-| GET | `*` | Serves the built frontend (production only) |
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/chat` | Streamed chat completion (`{ id, messages }`) |
+| `GET` | `/api/chats` | List chats |
+| `GET` | `/api/chats/:id/messages` | Load chat history |
+| `DELETE` | `/api/chats/:id/messages` | Clear chat (used by the Clear button) |
+| `DELETE` | `/api/chats/:id` | Delete a chat |
